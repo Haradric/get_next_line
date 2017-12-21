@@ -14,27 +14,24 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-t_list	*find_fd(int fd, t_list **begin_list)
+t_list	*get_buff(int fd, t_list **list)
 {
 	t_list	*last;
 	t_list	*new;
 
-	last = *begin_list;
-	while (last != NULL)
+	last = *list;
+	while (last)
 	{
-		if ((int)last->content_size == fd)
+		if (fd == (int)last->content_size)
 			return (last);
-		if (last->next == NULL)
-			break ;
 		last = last->next;
 	}
-	new = (t_list*)malloc(sizeof(t_list));
-	if (new == NULL)
+	if (!(new = malloc(sizeof(t_list))))
 		return (NULL);
 	new->content_size = fd;
 	new->content = ft_strnew(0);
-	new->next = *begin_list;
-	*begin_list = new;
+	new->next = *list;
+	*list = new;
 	return (new);
 }
 
@@ -75,7 +72,7 @@ int		reading(const int fd, char **str)
 
 	if (!(buf = ft_memalloc(BUFF_SIZE + 1)))
 		return (-1);
-	while ((bytes = read(fd, buf, BUFF_SIZE)) > 0)
+	while ((bytes = (int)read(fd, buf, BUFF_SIZE)) > 0)
 	{
 		buf[bytes] = '\0';
 		expand_str(str, buf);
@@ -90,24 +87,25 @@ int		reading(const int fd, char **str)
 int		get_next_line(const int fd, char **line)
 {
 	static t_list	*list = NULL;
-	t_list			*current;
+	t_list			*static_buff;
 	char			*str;
 	int				isempty;
 	int				read_ret;
 
 	if (fd < 0 || BUFF_SIZE <= 0 || read(fd, NULL, 0))
 		return (-1);
-	current = find_fd(fd, &list);
-	str = ft_strdup(current->content);
-	isempty = !ft_strcmp(str, "");
+	static_buff = get_buff(fd, &list);
+	str = ft_strdup(static_buff->content);
+	isempty = (str[0]) ? 0 : 1 ;
 	read_ret = reading(fd, &str);
 	if (read_ret == -1)
 		return (-1);
-	save_and_cut_rest(&str, current);
-	if (ft_strlen(current->content) == 0 && ft_strlen(str) == 0 && isempty &&
+	save_and_cut_rest(&str, static_buff);
+	if (!ft_strlen(str) && !ft_strlen(static_buff->content) && isempty && \
 		!read_ret)
 	{
 		*line = NULL;
+		free(str);
 		return (0);
 	}
 	*line = str;
